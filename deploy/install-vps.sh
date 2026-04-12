@@ -34,13 +34,13 @@ if [[ ! -f /swapfile ]]; then
 fi
 
 install -d -m 755 "$ROOT/server/data"
-chown -R www-data:www-data "$ROOT/server/data"
-
+# После git clone владелец — root; www-data не может создать node_modules без этого.
+chown -R www-data:www-data "$ROOT"
 echo "=== npm ci + build (web) ==="
-sudo -u www-data bash -c "cd '$ROOT/web' && npm ci && npm run build"
+sudo -u www-data env HOME="$ROOT" XDG_CACHE_HOME="$ROOT/.cache" bash -c "cd '$ROOT/web' && npm ci && npm run build"
 
 echo "=== npm ci (server) ==="
-sudo -u www-data bash -c "cd '$ROOT/server' && npm ci"
+sudo -u www-data env HOME="$ROOT" XDG_CACHE_HOME="$ROOT/.cache" bash -c "cd '$ROOT/server' && npm ci"
 
 if [[ ! -f "$ROOT/server/.env" ]]; then
   echo "Создайте $ROOT/server/.env (см. server/.env.example) и перезапустите: systemctl restart jetsurf-api"
@@ -58,7 +58,7 @@ EOF
   chmod 640 "$ROOT/web/.env.production"
 fi
 
-chown -R www-data:www-data "$ROOT/web" "$ROOT/server"
+chown -R www-data:www-data "$ROOT"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install -m 644 "$SCRIPT_DIR/nginx-jetsurf-wts.conf" "/etc/nginx/sites-available/${SITE}.conf"
