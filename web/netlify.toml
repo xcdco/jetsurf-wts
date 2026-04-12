@@ -1,0 +1,13 @@
+# В Netlify: Site settings → Build & deploy → Base directory = web
+# (если в Git у вас монорепозиторий с папкой web).
+# Если репозиторий — только Next-приложение в корне, Base directory оставьте пустым
+# и перенесите этот файл в корень репозитория.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"

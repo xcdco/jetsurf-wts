@@ -1,0 +1,19 @@
+[Unit]
+Description=JetSurf Next.js site
+After=network.target jetsurf-api.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/jetsurf-wts/web
+Environment=NODE_ENV=production
+EnvironmentFile=-/var/www/jetsurf-wts/web/.env.production
+ExecStart=/usr/bin/npm run start -- -H 127.0.0.1 -p 3000
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
