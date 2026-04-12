@@ -34,13 +34,22 @@ if [[ ! -f /swapfile ]]; then
 fi
 
 install -d -m 755 "$ROOT/server/data"
-# После git clone владелец — root; www-data не может создать node_modules без этого.
+
+# Сломанный node_modules / кэш от прошлых запусков (в т.ч. от root) дают TAR_ENTRY_ERROR и EACCES на /var/www/.npm
+rm -rf /var/www/.npm 2>/dev/null || true
+rm -rf "$ROOT/web/node_modules" "$ROOT/web/.next" "$ROOT/server/node_modules" 2>/dev/null || true
+install -d -m 755 "$ROOT/.npm-cache" "$ROOT/.cache"
+# После git clone владелец — root; www-data не может писать в дерево без этого.
 chown -R www-data:www-data "$ROOT"
+
+# Явный кэш npm: иначе иногда берётся /var/www/.npm (home www-data = /var/www), уже с файлами root.
+NPM_ENV=(env HOME="$ROOT" XDG_CACHE_HOME="$ROOT/.cache" NPM_CONFIG_CACHE="$ROOT/.npm-cache")
+
 echo "=== npm ci + build (web) ==="
-sudo -u www-data env HOME="$ROOT" XDG_CACHE_HOME="$ROOT/.cache" bash -c "cd '$ROOT/web' && npm ci && npm run build"
+sudo -u www-data "${NPM_ENV[@]}" bash -c "cd '$ROOT/web' && npm ci --no-audit --no-fund && npm run build"
 
 echo "=== npm ci (server) ==="
-sudo -u www-data env HOME="$ROOT" XDG_CACHE_HOME="$ROOT/.cache" bash -c "cd '$ROOT/server' && npm ci"
+sudo -u www-data "${NPM_ENV[@]}" bash -c "cd '$ROOT/server' && npm ci --no-audit --no-fund"
 
 if [[ ! -f "$ROOT/server/.env" ]]; then
   echo "Создайте $ROOT/server/.env (см. server/.env.example) и перезапустите: systemctl restart jetsurf-api"
