@@ -7,8 +7,9 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useReducedMotion } from "framer-motion";
 
-const heroImage =
-  "https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=1920&q=85&auto=format&fit=crop";
+/** Локальные файлы в `web/public/images/` — отдаются с вашего домена (не зависят от Unsplash/imgur). */
+const heroBg = "/images/hero-bg.jpg";
+const heroCard = "/images/hero-card.jpg";
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -47,11 +48,12 @@ export function Hero() {
     >
       <div ref={bg} className="hero-bg absolute inset-0">
         <Image
-          src={heroImage}
+          src={heroBg}
           alt="Катание на джетсёрфе в Крыму — бирюзовая вода и солнечный день"
           fill
           priority
           sizes="100vw"
+          unoptimized
           className="object-cover object-[center_35%]"
         />
         <div
@@ -136,12 +138,13 @@ export function Hero() {
           <div className="glass-panel relative overflow-hidden rounded-3xl p-1 shadow-[0_40px_120px_rgba(0,0,0,0.45)]">
             <div className="relative aspect-[4/5] overflow-hidden rounded-[1.35rem] sm:aspect-[16/11]">
               <Image
-                src="https://i.imgur.com/EYSNOHh.jpeg"
+                src={heroCard}
                 alt="JetSurf на Чёрном море — аренда в Севастополе"
                 fill
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 100vw, 480px"
                 priority
+                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">

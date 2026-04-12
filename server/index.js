@@ -13,6 +13,16 @@ import {
 
 dotenv.config();
 
+/** @returns {string} */
+function getBotToken() {
+  const raw = process.env.TELEGRAM_BOT_TOKEN;
+  if (raw == null || raw === "") return "";
+  return String(raw)
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/^['"]|['"]$/g, "");
+}
+
 const leadSchema = z.object({
   name: z.string().min(2).max(80),
   phone: z.string().min(10).max(32),
@@ -39,10 +49,10 @@ function ownerIdsFromEnv() {
   const raw = process.env.TELEGRAM_OWNER_IDS ?? "";
   const fromList = raw
     .split(",")
-    .map((s) => Number(String(s).trim()))
+    .map((s) => Number(String(s).trim().replace(/^\uFEFF/, "")))
     .filter((n) => Number.isFinite(n) && n > 0);
   if (fromList.length) return fromList;
-  const legacy = Number(process.env.TELEGRAM_CHAT_ID ?? "");
+  const legacy = Number(String(process.env.TELEGRAM_CHAT_ID ?? "").trim());
   return Number.isFinite(legacy) && legacy > 0 ? [legacy] : [];
 }
 
@@ -59,14 +69,14 @@ async function isAdminUser(userId) {
 
 async function getNotifyRecipients() {
   const ids = new Set(ownerIdsFromEnv());
-  const legacy = Number(process.env.TELEGRAM_CHAT_ID ?? "");
+  const legacy = Number(String(process.env.TELEGRAM_CHAT_ID ?? "").trim());
   if (Number.isFinite(legacy) && legacy > 0) ids.add(legacy);
   for (const id of await loadAdminUserIds()) ids.add(id);
   return [...ids];
 }
 
 async function tgApi(method, body) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = getBotToken();
   if (!token) throw new Error("no_bot_token");
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
@@ -110,7 +120,8 @@ function actorLabel(from) {
 }
 
 async function notifyTelegram(payload) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const allowSkip = process.env.ALLOW_LEADS_WITHOUT_TELEGRAM === "1";
+  const token = getBotToken();
   const lines = [
     "<b>Новая заявка JetSurf (сайт)</b>",
     `Имя: ${escapeHtml(payload.name)}`,
@@ -128,15 +139,27 @@ async function notifyTelegram(payload) {
   const html = lines.join("\n");
 
   if (!token) {
-    console.info("[lead]", html.replace(/<[^>]+>/g, ""));
-    return;
+    if (allowSkip) {
+      console.info("[lead]", html.replace(/<[^>]+>/g, ""));
+      return;
+    }
+    throw new Error(
+      "TELEGRAM_BOT_TOKEN не задан. Добавьте токен в server/.env или установите ALLOW_LEADS_WITHOUT_TELEGRAM=1 для локальной разработки.",
+    );
   }
 
   const recipients = await getNotifyRecipients();
   if (!recipients.length) {
-    console.warn("[lead] Нет получателей: задайте TELEGRAM_OWNER_IDS или TELEGRAM_CHAT_ID и/или добавьте админов через бота.");
-    console.info("[lead]", html.replace(/<[^>]+>/g, ""));
-    return;
+    if (allowSkip) {
+      console.warn(
+        "[lead] Нет получателей Telegram — заявка не отправлена (режим ALLOW_LEADS_WITHOUT_TELEGRAM).",
+      );
+      console.info("[lead]", html.replace(/<[^>]+>/g, ""));
+      return;
+    }
+    throw new Error(
+      "Нет получателей Telegram: укажите TELEGRAM_OWNER_IDS (ваш числовой id у @userinfobot) или TELEGRAM_CHAT_ID в server/.env",
+    );
   }
 
   const shortId = crypto.randomBytes(4).toString("hex");
@@ -159,7 +182,11 @@ async function notifyTelegram(payload) {
     }
   }
 
-  if (Object.keys(targets).length === 0) return;
+  if (Object.keys(targets).length === 0) {
+    throw new Error(
+      "Не удалось отправить сообщение в Telegram (проверьте токен бота и id чата; бот должен иметь возможность писать получателю).",
+    );
+  }
 
   const leads = await loadLeadMap();
   leads[shortId] = { html, targets, contacted: false };
@@ -316,7 +343,7 @@ async function handleMessage(msg) {
 let updateOffset = 0;
 
 async function pollTelegramOnce() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = getBotToken();
   if (!token) return;
   try {
     const res = await fetch(
@@ -335,7 +362,7 @@ async function pollTelegramOnce() {
 }
 
 function startTelegramPolling() {
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
+  if (!getBotToken()) {
     console.warn("TELEGRAM_BOT_TOKEN не задан — заявки только в лог.");
     return;
   }
@@ -374,8 +401,14 @@ app.post("/api/leads", async (req, res) => {
 
   try {
     await notifyTelegram(parsed.data);
-  } catch {
-    return res.status(500).json({ message: "Ошибка сервера" });
+  } catch (e) {
+    console.error("[api/leads]", e);
+    const msg =
+      e instanceof Error && typeof e.message === "string"
+        ? e.message
+        : "Ошибка сервера";
+    const status = /TELEGRAM|Telegram|получател/i.test(msg) ? 503 : 500;
+    return res.status(status).json({ message: msg });
   }
 
   return res.json({ ok: true });
