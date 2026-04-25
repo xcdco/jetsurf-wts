@@ -23,6 +23,17 @@ function getBotToken() {
     .replace(/^['"]|['"]$/g, "");
 }
 
+/** @returns {string} */
+function getTelegramApiBase() {
+  const raw = process.env.TELEGRAM_API_BASE;
+  if (raw == null || raw === "") return "https://api.telegram.org";
+  return String(raw)
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\/+$/, "");
+}
+
 const leadSchema = z.object({
   name: z.string().min(2).max(80),
   phone: z.string().min(10).max(32),
@@ -78,7 +89,8 @@ async function getNotifyRecipients() {
 async function tgApi(method, body) {
   const token = getBotToken();
   if (!token) throw new Error("no_bot_token");
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+  const apiBase = getTelegramApiBase();
+  const res = await fetch(`${apiBase}/bot${token}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -346,8 +358,9 @@ async function pollTelegramOnce() {
   const token = getBotToken();
   if (!token) return;
   try {
+    const apiBase = getTelegramApiBase();
     const res = await fetch(
-      `https://api.telegram.org/bot${token}/getUpdates?timeout=45&offset=${updateOffset}`,
+      `${apiBase}/bot${token}/getUpdates?timeout=45&offset=${updateOffset}`,
     );
     const json = await res.json();
     if (!json.ok || !Array.isArray(json.result)) return;
