@@ -32,9 +32,22 @@ dl() {
   rm -f "$t"
   return 1
 }
+# Не затираем файлы из git (нормальный JPEG обычно > 8 KiB).
+img_usable() {
+  local f="$1" min="${2:-8192}"
+  [[ -f "$f" ]] && [[ "$(stat -c%s "$f" 2>/dev/null || echo 0)" -ge "$min" ]]
+}
 if command -v curl >/dev/null 2>&1; then
-  dl "$URL_BG" "$IMG_BG" || echo "[warn] hero-bg не скачался — залейте файл с ПК в $IMG_BG"
-  dl "$URL_CARD" "$IMG_CARD" || echo "[warn] hero-card не скачался — залейте с ПК в $IMG_CARD"
+  if img_usable "$IMG_BG"; then
+    echo "[skip] hero-bg уже есть из репозитория"
+  else
+    dl "$URL_BG" "$IMG_BG" || echo "[warn] hero-bg не скачался — залейте файл с ПК в $IMG_BG"
+  fi
+  if img_usable "$IMG_CARD"; then
+    echo "[skip] hero-card уже есть из репозитория"
+  else
+    dl "$URL_CARD" "$IMG_CARD" || echo "[warn] hero-card не скачался — залейте с ПК в $IMG_CARD"
+  fi
 else
   echo "[warn] curl не найден — положите файлы в web/public/images/ вручную"
 fi

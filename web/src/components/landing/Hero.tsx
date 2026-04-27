@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useReducedMotion } from "framer-motion";
 
-/** Локальные файлы в `web/public/images/` — отдаются с вашего домена (не зависят от Unsplash/imgur). */
+/** Файлы в `web/public/images/` — обычный img, без next/image (стабильнее на проде). */
 const heroBg = "/images/hero-bg.jpg";
 const heroCard = "/images/hero-card.jpg";
 
@@ -16,6 +15,8 @@ export function Hero() {
   const bg = useRef<HTMLDivElement>(null);
   const fg = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+  const [bgFailed, setBgFailed] = useState(false);
+  const [cardFailed, setCardFailed] = useState(false);
 
   useLayoutEffect(() => {
     if (reduce || !root.current || !bg.current) return;
@@ -46,22 +47,31 @@ export function Hero() {
       id="top"
       className="relative isolate min-h-[100svh] overflow-hidden bg-ocean-950"
     >
-      <div ref={bg} className="hero-bg absolute inset-0">
-        <Image
-          src={heroBg}
-          alt="Катание на джетсёрфе в Крыму — бирюзовая вода и солнечный день"
-          fill
-          priority
-          sizes="100vw"
-          unoptimized
-          className="object-cover object-[center_35%]"
-        />
+      <div ref={bg} className="hero-bg absolute inset-0 overflow-hidden">
         <div
-          className="absolute inset-0 bg-gradient-to-b from-ocean-950/55 via-ocean-900/45 to-ocean-950"
+          className="absolute inset-0 bg-gradient-to-br from-cyan-800/85 via-teal-900/90 to-ocean-950"
+          aria-hidden
+        />
+        {!bgFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroBg}
+            alt=""
+            width={1920}
+            height={1080}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            className="absolute inset-0 z-[1] h-full w-full object-cover object-[center_35%]"
+            onError={() => setBgFailed(true)}
+          />
+        ) : null}
+        <div
+          className="absolute inset-0 z-[2] bg-gradient-to-b from-ocean-950/55 via-ocean-900/45 to-ocean-950"
           aria-hidden
         />
         <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_20%,rgba(94,225,211,0.22),transparent_55%)]"
+          className="absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_70%_20%,rgba(94,225,211,0.22),transparent_55%)]"
           aria-hidden
         />
       </div>
@@ -137,17 +147,25 @@ export function Hero() {
         >
           <div className="glass-panel relative overflow-hidden rounded-3xl p-1 shadow-[0_40px_120px_rgba(0,0,0,0.45)]">
             <div className="relative aspect-[4/5] overflow-hidden rounded-[1.35rem] sm:aspect-[16/11]">
-              <Image
-                src={heroCard}
-                alt="JetSurf на Чёрном море — аренда в Севастополе"
-                fill
-                className="object-cover object-center"
-                sizes="(max-width: 1024px) 100vw, 480px"
-                priority
-                unoptimized
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-cyan-700/50 to-ocean-900"
+                aria-hidden
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+              {!cardFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={heroCard}
+                  alt="JetSurf на Чёрном море — аренда в Севастополе"
+                  width={960}
+                  height={720}
+                  loading="eager"
+                  decoding="async"
+                  className="absolute inset-0 z-[1] h-full w-full object-cover object-center"
+                  onError={() => setCardFailed(true)}
+                />
+              ) : null}
+              <div className="absolute inset-0 z-[2] bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4 z-[3] flex items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-aqua-300/90">
                     Премиум-опыт

@@ -1,0 +1,20 @@
+[Unit]
+Description=JetSurf Telegram Bot API relay (proxy to api.telegram.org)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/telegram-relay
+Environment=NODE_ENV=production
+EnvironmentFile=-/opt/telegram-relay/.env
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
